@@ -3336,13 +3336,13 @@
             try {
                 let csv = "Team Name,College,Leader Name,Leader Email,Leader Phone,Members,Status\n";
                 registrationDatabase.forEach(row => {
-                    const team = `"${(row.teamName || '').replace(/"/g, '""')}"`;
-                    const college = `"${(row.college || '').replace(/"/g, '""')}"`;
-                    const leader = `"${(row.leaderName || '').replace(/"/g, '""')}"`;
-                    const email = `"${(row.leaderEmail || '').replace(/"/g, '""')}"`;
-                    const phone = `"${(row.leaderPhone || '').replace(/"/g, '""')}"`;
-                    const members = `"${(Array.isArray(row.members) ? row.members.join('; ') : row.members || '').replace(/"/g, '""')}"`;
-                    const status = `"${row.status || 'Registered'}"`;
+                    const team = `"${String(row.teamName || '').replace(/"/g, '""')}"`;
+                    const college = `"${String(row.college || '').replace(/"/g, '""')}"`;
+                    const leader = `"${String(row.leaderName || '').replace(/"/g, '""')}"`;
+                    const email = `"${String(row.leaderEmail || '').replace(/"/g, '""')}"`;
+                    const phone = `"${String(row.leaderPhone || '').replace(/"/g, '""')}"`;
+                    const members = `"${(Array.isArray(row.members) ? row.members.join('; ') : String(row.members || '')).replace(/"/g, '""')}"`;
+                    const status = `"${String(row.status || 'Registered').replace(/"/g, '""')}"`;
                     csv += `${team},${college},${leader},${email},${phone},${members},${status}\n`;
                 });
 
