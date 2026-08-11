@@ -1,0 +1,17 @@
+{
+  "name": "SIMATS SYNORA '26 Certificate Sharing Portal",
+  "short_name": "SYNORA '26",
+  "description": "Participant Registration & Automated Certificate Sharing Portal for SIMATS Engineering",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0c",
+  "theme_color": "#c5a059",
+  "icons": [
+    {
+      "src": "template.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
