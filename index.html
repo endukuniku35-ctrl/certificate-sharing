@@ -2444,42 +2444,31 @@
                 showNotification("Ready for Sharing!");
             }, 1000);
 
-            const logoutVisible = document.getElementById('navLogoutBtn').style.display === 'block';
-
-            if (logoutVisible) {
-                // Organizer Mode: Show full certificate management & download screen
-                renderPreviewCards();
-                updateSuccessScreenButtons();
-                if (currentTeamData) {
-                    addAuditLog("Generated certificates for team: " + currentTeamData.teamName, "success");
-                }
-                document.getElementById('backToDashboardBtn').style.display = 'inline-block';
-                document.getElementById('processUI').style.display = 'none';
-                document.getElementById('regSubmitBtn').disabled = false;
-                document.getElementById('registrationForm').reset();
-                resetRegistrationForm();
-                navigateTo('successScreen');
-            } else {
-                // Public Participant Mode: Show registration confirmation summary (certificates restricted to organizers)
-                document.getElementById('processUI').style.display = 'none';
-                document.getElementById('regSubmitBtn').disabled = false;
-                
-                if (currentTeamData) {
-                    const tTeam = document.getElementById('pubSummaryTeam');
-                    const tCollege = document.getElementById('pubSummaryCollege');
-                    const tLeader = document.getElementById('pubSummaryLeader');
-                    const tMembers = document.getElementById('pubSummaryMembers');
-                    
-                    if (tTeam) tTeam.textContent = currentTeamData.teamName;
-                    if (tCollege) tCollege.textContent = currentTeamData.college;
-                    if (tLeader) tLeader.textContent = `${currentTeamData.leaderName} (${currentTeamData.leaderEmail})`;
-                    if (tMembers) tMembers.innerHTML = currentTeamData.members.map(m => `<li>${m}</li>`).join('');
-                }
-
-                document.getElementById('registrationForm').reset();
-                resetRegistrationForm();
-                navigateTo('publicRegistrationSuccessScreen');
+            // Direct No-Login Flow: Show full certificate previews, downloads & dispatch options immediately
+            renderPreviewCards();
+            updateSuccessScreenButtons();
+            if (currentTeamData) {
+                addAuditLog("Generated certificates for team: " + currentTeamData.teamName, "success");
             }
+            const backBtn = document.getElementById('backToDashboardBtn');
+            if (backBtn) backBtn.style.display = 'inline-block';
+            
+            document.getElementById('processUI').style.display = 'none';
+            document.getElementById('regSubmitBtn').disabled = false;
+            document.getElementById('registrationForm').reset();
+            resetRegistrationForm();
+
+            // Trigger Confetti Celebration
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 120,
+                    spread: 80,
+                    origin: { y: 0.6 },
+                    colors: ['#c5a059', '#d4af37', '#10b981', '#ffffff']
+                });
+            }
+
+            navigateTo('successScreen');
         }
 
         // Render Canvas template and output PDF Blob with CORS/local file safety
