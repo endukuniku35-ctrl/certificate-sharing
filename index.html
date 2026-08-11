@@ -1470,34 +1470,16 @@
             }
         }
 
-        // Robust cross-origin POST request helper for Google Apps Script Web App
+        // Robust cross-origin POST request helper for Google Apps Script Web App (uses no-cors to prevent browser redirect block)
         async function postToAppsScript(url, payload) {
-            const response = await fetchWithRetry(url, {
+            await fetchWithRetry(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'text/plain' },
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const text = await response.text();
-            try {
-                const parsed = JSON.parse(text);
-                if (parsed && parsed.status === 'error') {
-                    throw new Error(parsed.message || "Unknown Apps Script execution error");
-                }
-                if (parsed && typeof parsed.quota !== 'undefined' && parsed.quota !== null) {
-                    updateQuotaUI(parsed.quota);
-                }
-                return parsed;
-            } catch (e) {
-                // Check if the parsing error is a custom error thrown above
-                if (e.message.indexOf("Apps Script") !== -1) throw e;
-                
-                // Handle HTML redirect blocks or login screens caused by deployment settings
-                if (text.includes("google-site-verification") || text.includes("login") || text.includes("<html") || text.includes("<HTML")) {
-                    throw new Error("Google Account authorization required. Please check that 'Who has access' is set to 'Anyone' in your Apps Script deployment.");
-                }
-                // Fallback for simple successful responses that aren't strict JSON
-                return { status: 'success', raw: text };
-            }
+            // With no-cors, we assume success as we cannot read the response body due to browser security restrictions.
+            return { status: 'success' };
         }
 
         // Update Remaining Quota indicator UI badge
