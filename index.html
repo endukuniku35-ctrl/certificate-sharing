@@ -1714,11 +1714,14 @@
             liveCanvas.addEventListener('mouseup', stopDragging);
             liveCanvas.addEventListener('mouseleave', stopDragging);
 
-            // Auto-login saved organizer on page load and open dashboard directly
-            if (localStorage.getItem('save_password_login') === 'true') {
+            // Auto-login active organizer session on page load and navigate to dashboardScreen
+            const isSessionActive = localStorage.getItem('organizer_session_active') === 'true' || localStorage.getItem('save_password_login') === 'true';
+            if (isSessionActive) {
                 document.getElementById('loginId').value = localStorage.getItem('saved_login_id') || '192472374';
                 document.getElementById('loginPassword').value = localStorage.getItem('saved_login_pass') || 'password';
-                document.getElementById('savePassword').checked = true;
+                if (localStorage.getItem('save_password_login') === 'true') {
+                    document.getElementById('savePassword').checked = true;
+                }
                 setOrganizerLoggedInState(true);
                 renderDatabaseRecords();
                 navigateTo('dashboardScreen');
@@ -1853,7 +1856,9 @@
             const err = document.getElementById('loginErrorMsg');
 
             if (id === '192472374' && pass === 'password') {
-                // Save password logic
+                // Always persist active organizer session
+                localStorage.setItem('organizer_session_active', 'true');
+                
                 const saveCheck = document.getElementById('savePassword').checked;
                 if (saveCheck) {
                     localStorage.setItem('save_password_login', 'true');
@@ -1906,6 +1911,7 @@
         }
 
         function logoutOrganizer() {
+            localStorage.removeItem('organizer_session_active');
             localStorage.removeItem('save_password_login');
             localStorage.removeItem('saved_login_id');
             localStorage.removeItem('saved_login_pass');
