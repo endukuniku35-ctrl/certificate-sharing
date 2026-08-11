@@ -20,9 +20,14 @@ function doGet(e) {
   const action = e.parameter.action;
   
   if (action === 'get') {
-    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Registrations");
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet = ss.getSheetByName("Registrations");
+    if (!sheet && ss.getSheets().length > 0) {
+      sheet = ss.getSheets()[0]; // Fallback to first sheet
+    }
+    
     if (!sheet) {
-      return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ database: [], quota: 0 })).setMimeType(ContentService.MimeType.JSON);
     }
     
     const rows = sheet.getDataRange().getValues();
@@ -31,19 +36,26 @@ function doGet(e) {
     // Skip headers (row 0)
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
+      const teamName = row[0] ? row[0].toString().trim() : "";
+      if (!teamName) continue; // Skip empty rows
+      
       data.push({
-        teamName: row[0],
-        college: row[1],
-        leaderName: row[2],
-        leaderEmail: row[3],
-        leaderPhone: row[4],
-        members: row[5] ? row[5].split(',').map(m => m.trim()) : [],
-        status: row[7] || "Registered"
+        teamName: teamName,
+        college: row[1] ? row[1].toString().trim() : "",
+        leaderName: row[2] ? row[2].toString().trim() : "",
+        leaderEmail: row[3] ? row[3].toString().trim() : "",
+        leaderPhone: row[4] ? row[4].toString().trim() : "",
+        members: row[5] ? row[5].toString().split(',').map(m => m.trim()) : [],
+        status: row[7] ? row[7].toString().trim() : "Registered"
       });
     }
     
-    return ContentService.createTextOutput(JSON.stringify(data))
-      .setMimeType(ContentService.MimeType.JSON);
+    // Return both the database records and the remaining daily email quota
+    const quota = MailApp.getRemainingDailyEmails();
+    return ContentService.createTextOutput(JSON.stringify({
+      database: data,
+      quota: quota
+    })).setMimeType(ContentService.MimeType.JSON);
   }
   
   return ContentService.createTextOutput("Hello from SIMATS Portal Backend");
@@ -218,8 +230,10 @@ function doPost(e) {
         }
       }
       
-      return ContentService.createTextOutput(JSON.stringify({ status: "success" }))
-        .setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ 
+        status: "success", 
+        quota: MailApp.getRemainingDailyEmails() 
+      })).setMimeType(ContentService.MimeType.JSON);
     }
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() }))

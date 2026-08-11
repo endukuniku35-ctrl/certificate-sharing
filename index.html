@@ -1255,6 +1255,13 @@
                 <div class="dashboard-controls">
                     <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
                         <h3 style="color: var(--primary); font-weight: 700; margin-bottom: 0;">Registration Database</h3>
+                        <div id="emailQuotaBadge" style="display:none; align-items:center; gap:0.3rem; padding: 0.3rem 0.6rem; font-size: 0.75rem; font-weight: 700; border-radius: 4px; background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
+                            <span>Quota: <strong id="emailQuotaValue">100</strong> left today</span>
+                        </div>
                         <button class="btn btn-secondary" onclick="syncSheetsData()" title="Refresh database from Google Sheets" style="padding:0.4rem; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--radius-sm);">
                             <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
@@ -1476,14 +1483,44 @@
                 if (parsed && parsed.status === 'error') {
                     throw new Error(parsed.message || "Unknown Apps Script execution error");
                 }
+                if (parsed && typeof parsed.quota !== 'undefined' && parsed.quota !== null) {
+                    updateQuotaUI(parsed.quota);
+                }
                 return parsed;
             } catch (e) {
+                // Check if the parsing error is a custom error thrown above
+                if (e.message.indexOf("Apps Script") !== -1) throw e;
+                
                 // Handle HTML redirect blocks or login screens caused by deployment settings
                 if (text.includes("google-site-verification") || text.includes("login") || text.includes("<html") || text.includes("<HTML")) {
                     throw new Error("Google Account authorization required. Please check that 'Who has access' is set to 'Anyone' in your Apps Script deployment.");
                 }
                 // Fallback for simple successful responses that aren't strict JSON
                 return { status: 'success', raw: text };
+            }
+        }
+
+        // Update Remaining Quota indicator UI badge
+        function updateQuotaUI(quota) {
+            const badge = document.getElementById('emailQuotaBadge');
+            const valSpan = document.getElementById('emailQuotaValue');
+            if (badge && valSpan) {
+                valSpan.textContent = quota;
+                badge.style.display = 'inline-flex';
+                
+                if (quota <= 10) {
+                    badge.style.background = 'rgba(239, 68, 68, 0.12)';
+                    badge.style.color = '#ef4444';
+                    badge.style.borderColor = 'rgba(239, 68, 68, 0.35)';
+                } else if (quota <= 30) {
+                    badge.style.background = 'rgba(245, 158, 11, 0.12)';
+                    badge.style.color = '#f59e0b';
+                    badge.style.borderColor = 'rgba(245, 158, 11, 0.35)';
+                } else {
+                    badge.style.background = 'rgba(16, 185, 129, 0.12)';
+                    badge.style.color = '#10b981';
+                    badge.style.borderColor = 'rgba(16, 185, 129, 0.35)';
+                }
             }
         }
 
@@ -1856,14 +1893,26 @@
             fetch(url + "?action=get")
                 .then(res => res.json())
                 .then(data => {
-                    if (data && Array.isArray(data)) {
-                        // Google Sheets is the single source of truth for all data & status
-                        registrationDatabase = data;
-                        localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
-                        renderDatabaseRecords();
-                        showNotification("Database synchronized with Google Sheets!");
-                        addAuditLog("Synchronized database from Google Sheets (source of truth)", "success");
+                    let db = [];
+                    let quota = null;
+
+                    if (data && data.database && Array.isArray(data.database)) {
+                        db = data.database;
+                        quota = data.quota;
+                    } else if (data && Array.isArray(data)) {
+                        db = data;
                     }
+
+                    registrationDatabase = db;
+                    localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
+                    
+                    if (quota !== null) {
+                        updateQuotaUI(quota);
+                    }
+
+                    renderDatabaseRecords();
+                    showNotification("Database synchronized with Google Sheets!");
+                    addAuditLog("Synchronized database from Google Sheets (source of truth)", "success");
                 })
                 .catch(err => {
                     console.error("Sheets sync error:", err);
