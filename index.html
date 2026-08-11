@@ -1847,8 +1847,23 @@
                 }
             });
 
+            // Auto-update saved URL if default URL in code is newer/different
+            const defaultUrl = 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
+            const savedUrl = localStorage.getItem('simats_sheets_url');
+            if (savedUrl && savedUrl !== defaultUrl) {
+                const oldDefaults = [
+                    'https://script.google.com/macros/s/AKfycbwCw9tEoreUXJX7ox6iR22p2m4cn2JBem-95rztjkLX6jFvsi2GDP33DJD9apUSsCkG/exec',
+                    'https://script.google.com/macros/s/AKfycbx7-p-aspBuTGgm0h0dfKMyb3MLq2eIZcdIiQHWwG7kBGMX_xVKF0LVF2E5SI7PcwXP/exec',
+                    'https://script.google.com/macros/s/AKfycbw4pADPpSldprzcDTXgxVpv8FH7Vw1v_gzeyEd1Er1a_dH0wtlnjybVVNh-eDCvdn4m/exec',
+                    'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec'
+                ];
+                if (oldDefaults.includes(savedUrl)) {
+                    localStorage.setItem('simats_sheets_url', defaultUrl);
+                }
+            }
+
             // Prefill Google Sheets Web App URL if saved
-            document.getElementById('configSheetsUrl').value = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
+            document.getElementById('configSheetsUrl').value = localStorage.getItem('simats_sheets_url') || defaultUrl;
         });
 
         // Navigation Handler
