@@ -50,7 +50,17 @@ function doGet(e) {
       });
     }
     
-    const payload = JSON.stringify(data);
+    let quota = -1;
+    try {
+      quota = MailApp.getRemainingDailyEmails();
+    } catch (qErr) {
+      // Safe fallback if MailApp is not supported or throws permissions/runtime exceptions
+    }
+
+    const payload = JSON.stringify({
+      database: data,
+      quota: quota
+    });
     
     // Support JSONP wrapping to bypass CORS blocks on file:// origin (local runs)
     const callback = e.parameter.callback;
@@ -235,8 +245,14 @@ function doPost(e) {
         }
       }
       
+      let quota = -1;
+      try {
+        quota = MailApp.getRemainingDailyEmails();
+      } catch (qErr) {}
+
       return ContentService.createTextOutput(JSON.stringify({ 
-        status: "success"
+        status: "success",
+        quota: quota
       })).setMimeType(ContentService.MimeType.JSON);
     }
   } catch (err) {

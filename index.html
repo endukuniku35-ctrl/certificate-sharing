@@ -1487,10 +1487,20 @@
             const badge = document.getElementById('emailQuotaBadge');
             const valSpan = document.getElementById('emailQuotaValue');
             if (badge && valSpan) {
+                if (quota === null || quota === undefined || quota < 0) {
+                    badge.style.display = 'none';
+                    return;
+                }
+                
                 valSpan.textContent = quota;
                 badge.style.display = 'inline-flex';
                 
-                if (quota <= 10) {
+                if (quota === 0) {
+                    badge.style.background = 'rgba(239, 68, 68, 0.15)';
+                    badge.style.color = '#ef4444';
+                    badge.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                    showNotification("🔴 Google daily email limit reached! Emails cannot be sent until reset.", "error");
+                } else if (quota <= 10) {
                     badge.style.background = 'rgba(239, 68, 68, 0.12)';
                     badge.style.color = '#ef4444';
                     badge.style.borderColor = 'rgba(239, 68, 68, 0.35)';
