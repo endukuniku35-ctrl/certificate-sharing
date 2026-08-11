@@ -1848,7 +1848,7 @@
             });
 
             // Prefill Google Sheets Web App URL if saved
-            document.getElementById('configSheetsUrl').value = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec';
+            document.getElementById('configSheetsUrl').value = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
         });
 
         // Navigation Handler
@@ -1857,6 +1857,11 @@
                 screen.classList.remove('active');
             });
             document.getElementById(screenId).classList.add('active');
+            
+            // Always sync fresh status data from Sheets when entering the Dashboard
+            if (screenId === 'dashboardScreen') {
+                syncSheetsData();
+            }
         }
 
         // Google Sheets Integration Helpers
@@ -1868,7 +1873,7 @@
         }
 
         function syncSheetsData() {
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
             if (!url) return;
 
             showNotification("Syncing database with Google Sheets...");
@@ -2237,7 +2242,7 @@
             localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
 
             // Sync with Google Sheets Apps Script URL if configured
-            const sheetsUrl = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec';
+            const sheetsUrl = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
             if (sheetsUrl) {
                 postToAppsScript(sheetsUrl, {
                     action: 'register',
@@ -2364,7 +2369,7 @@
                 return;
             }
 
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
             const btn = document.getElementById('directEmailBtn');
             btn.disabled = true;
             btn.innerHTML = `
@@ -2448,7 +2453,7 @@
             addAuditLog(`Instantly updated status to Emailed for team: ${currentTeamData.teamName}`, 'success');
 
             // 3. Sync status update to Google Sheets Apps Script Web App
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
             if (url) {
                 postToAppsScript(url, {
                     action: 'sendEmail',
@@ -2458,6 +2463,8 @@
                     attachments: []
                 }).then(res => {
                     addAuditLog(`Synced Emailed status to Sheets for team: ${currentTeamData.teamName}`, 'success');
+                    // Fetch official data from Google Sheets after a short delay
+                    setTimeout(syncSheetsData, 2500);
                 }).catch(err => {
                     console.error("Sheets status update error:", err);
                     addAuditLog(`Sheets status sync error: ${err.message}`, 'error');
@@ -3039,7 +3046,7 @@
                 return;
             }
             
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
             if (!url) {
                 showNotification("Please configure your Google Sheets URL in the Organizer Dashboard first.", "error");
                 return;
@@ -3118,7 +3125,7 @@
                 }
             }
 
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
             showNotification(`Generating & emailing certificates to ${team.leaderEmail}...`);
 
             try {
@@ -3164,7 +3171,7 @@
 
         // Batch Email Dispatcher — Uses Google Sheets status as source of truth
         async function batchEmailPendingTeams() {
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwArqLxZSRcZn1LWGpP0KoxoIRLOV-nqAjYqmf1MKyc0vTXXUIOZE-BNZ4lCXBCex8/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec';
 
             // Step 1: Sync fresh data from Google Sheets (source of truth) before checking status
             showNotification("Fetching latest status from Google Sheets...");
@@ -3281,6 +3288,9 @@
             if (statusText) statusText.textContent = `Completed! Dispatched ${successCount} team emails (${failCount} failed, ${alreadySentCount} skipped).`;
             if (progressBar) progressBar.style.width = '100%';
             showNotification(`Batch dispatch complete! Sent ${successCount} emails.`, "success");
+            
+            // Final real sync with Google Sheets after a 2.5-second delay to retrieve official server-side statuses
+            setTimeout(syncSheetsData, 2500);
         }
 
         // Check Certificate Authenticity
