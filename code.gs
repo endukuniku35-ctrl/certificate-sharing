@@ -52,10 +52,20 @@ function doGet(e) {
     
     // Return both the database records and the remaining daily email quota
     const quota = MailApp.getRemainingDailyEmails();
-    return ContentService.createTextOutput(JSON.stringify({
+    const payload = JSON.stringify({
       database: data,
       quota: quota
-    })).setMimeType(ContentService.MimeType.JSON);
+    });
+    
+    // Support JSONP wrapping to bypass CORS blocks on file:// origin (local runs)
+    const callback = e.parameter.callback;
+    if (callback) {
+      return ContentService.createTextOutput(callback + "(" + payload + ")")
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+    
+    return ContentService.createTextOutput(payload)
+      .setMimeType(ContentService.MimeType.JSON);
   }
   
   return ContentService.createTextOutput("Hello from SIMATS Portal Backend");

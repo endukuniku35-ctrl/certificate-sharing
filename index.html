@@ -1892,35 +1892,58 @@
             if (!url) return;
 
             showNotification("Syncing database with Google Sheets...");
-            fetch(url + "?action=get")
-                .then(res => res.json())
-                .then(data => {
-                    let db = [];
-                    let quota = null;
+            
+            // Define unique global JSONP callback name
+            const callbackName = 'simats_jsonp_' + Math.round(1000000 * Math.random());
+            
+            window[callbackName] = function(data) {
+                // Cleanup script tag and global callback
+                const scriptNode = document.getElementById(callbackName);
+                if (scriptNode && scriptNode.parentNode) {
+                    scriptNode.parentNode.removeChild(scriptNode);
+                }
+                delete window[callbackName];
 
-                    if (data && data.database && Array.isArray(data.database)) {
-                        db = data.database;
-                        quota = data.quota;
-                    } else if (data && Array.isArray(data)) {
-                        db = data;
-                    }
+                let db = [];
+                let quota = null;
 
-                    registrationDatabase = db;
-                    localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
-                    
-                    if (quota !== null) {
-                        updateQuotaUI(quota);
-                    }
+                if (data && data.database && Array.isArray(data.database)) {
+                    db = data.database;
+                    quota = data.quota;
+                } else if (data && Array.isArray(data)) {
+                    db = data;
+                }
 
-                    renderDatabaseRecords();
-                    showNotification("Database synchronized with Google Sheets!");
-                    addAuditLog("Synchronized database from Google Sheets (source of truth)", "success");
-                })
-                .catch(err => {
-                    console.error("Sheets sync error:", err);
-                    showNotification("Failed to fetch records from Sheets (check CORS/URL)", "error");
-                    addAuditLog("Google Sheets database fetch request failed", "error");
-                });
+                registrationDatabase = db;
+                localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
+                
+                if (quota !== null) {
+                    updateQuotaUI(quota);
+                }
+
+                renderDatabaseRecords();
+                showNotification("Database synchronized with Google Sheets!");
+                addAuditLog("Synchronized database from Google Sheets (source of truth)", "success");
+            };
+
+            // Inject JSONP script element (completely bypasses browser CORS locks under file:// origin)
+            const script = document.createElement('script');
+            script.id = callbackName;
+            const separator = url.indexOf('?') === -1 ? '?' : '&';
+            script.src = `${url}${separator}action=get&callback=${callbackName}`;
+            
+            script.onerror = function() {
+                const scriptNode = document.getElementById(callbackName);
+                if (scriptNode && scriptNode.parentNode) {
+                    scriptNode.parentNode.removeChild(scriptNode);
+                }
+                delete window[callbackName];
+                console.error("Sheets JSONP script load failed.");
+                showNotification("Failed to fetch records from Sheets (check URL/network)", "error");
+                addAuditLog("Google Sheets database fetch request failed", "error");
+            };
+
+            document.body.appendChild(script);
         }
 
         // Show/Close login popup modal
