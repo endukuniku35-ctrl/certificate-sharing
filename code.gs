@@ -136,11 +136,23 @@ function doPost(e) {
       
       // Locate the EXACT record in sheet and update Status column H to "Emailed"
       const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const sheet = ss.getSheetByName("Registrations");
+      let sheet = ss.getSheetByName("Registrations");
+      if (!sheet && ss.getSheets().length > 0) {
+        sheet = ss.getSheets()[0]; // Fallback to first sheet
+      }
+      
       if (sheet) {
         const values = sheet.getDataRange().getValues();
         const targetEmail = (email || "").toString().trim().toLowerCase();
         const targetTeam = (teamName || "").toString().trim().toLowerCase();
+        
+        // Helper to normalize strings for comparison (removes spaces, punctuation, lowercase)
+        const normalizeStr = function(str) {
+          return str.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+        };
+        
+        const normTargetTeam = normalizeStr(targetTeam);
+        const normTargetEmail = targetEmail.split('@')[0]; // compare local part of email as fallback
         
         let matchedRow = -1;
         
@@ -155,22 +167,45 @@ function doPost(e) {
           }
         }
         
-        // Pass 2: If no exact match, try team name only (handles cases where email differs)
-        if (matchedRow === -1) {
+        // Pass 2: Normalized Team Name Match (ignoring spaces, punctuation)
+        if (matchedRow === -1 && normTargetTeam) {
           for (let i = 1; i < values.length; i++) {
-            const sheetTeam = (values[i][0] || "").toString().trim().toLowerCase();
-            if (targetTeam && sheetTeam === targetTeam) {
+            const sheetTeam = normalizeStr(values[i][0] || "");
+            if (sheetTeam === normTargetTeam) {
               matchedRow = i;
               break;
             }
           }
         }
         
-        // Pass 3: Last resort - match by email only (if team name was empty/different)
-        if (matchedRow === -1) {
+        // Pass 3: Email Local Part Match (e.g. "ikuniku35" matches "ikuniku35@gmail.com")
+        if (matchedRow === -1 && normTargetEmail) {
           for (let i = 1; i < values.length; i++) {
             const sheetEmail = (values[i][3] || "").toString().trim().toLowerCase();
-            if (targetEmail && sheetEmail === targetEmail) {
+            const sheetEmailLocal = sheetEmail.split('@')[0];
+            if (sheetEmailLocal && sheetEmailLocal === normTargetEmail) {
+              matchedRow = i;
+              break;
+            }
+          }
+        }
+        
+        // Pass 4: Fallback exact email match
+        if (matchedRow === -1 && targetEmail) {
+          for (let i = 1; i < values.length; i++) {
+            const sheetEmail = (values[i][3] || "").toString().trim().toLowerCase();
+            if (sheetEmail === targetEmail) {
+              matchedRow = i;
+              break;
+            }
+          }
+        }
+
+        // Pass 5: Substring matching (fuzzy match)
+        if (matchedRow === -1 && normTargetTeam) {
+          for (let i = 1; i < values.length; i++) {
+            const sheetTeam = normalizeStr(values[i][0] || "");
+            if (sheetTeam && (sheetTeam.indexOf(normTargetTeam) !== -1 || normTargetTeam.indexOf(sheetTeam) !== -1)) {
               matchedRow = i;
               break;
             }
