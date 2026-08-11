@@ -1833,26 +1833,12 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data && Array.isArray(data)) {
-                        // Smart Merge: preserve local 'Emailed' statuses that haven't synced to Sheets yet
-                        const localStatusMap = {};
-                        registrationDatabase.forEach(t => {
-                            const key = (t.leaderEmail || '').trim().toLowerCase() + '|' + (t.teamName || '').trim().toLowerCase();
-                            if (t.status === 'Emailed') localStatusMap[key] = 'Emailed';
-                        });
-
-                        data.forEach(remoteTeam => {
-                            const key = (remoteTeam.leaderEmail || '').trim().toLowerCase() + '|' + (remoteTeam.teamName || '').trim().toLowerCase();
-                            // If local had 'Emailed' but remote doesn't, preserve the local status
-                            if (localStatusMap[key] === 'Emailed' && remoteTeam.status !== 'Emailed') {
-                                remoteTeam.status = 'Emailed';
-                            }
-                        });
-
+                        // Google Sheets is the single source of truth for all data & status
                         registrationDatabase = data;
                         localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
                         renderDatabaseRecords();
-                        showNotification("Database synchronized successfully!");
-                        addAuditLog("Synchronized registration database with Google Sheets", "success");
+                        showNotification("Database synchronized with Google Sheets!");
+                        addAuditLog("Synchronized database from Google Sheets (source of truth)", "success");
                     }
                 })
                 .catch(err => {
@@ -3140,10 +3126,26 @@
             }
         }
 
-        // Batch Email Dispatcher for All Pending Teams (Skips Already Sent)
+        // Batch Email Dispatcher — Uses Google Sheets status as source of truth
         async function batchEmailPendingTeams() {
-            // Filter ONLY teams that have NOT been emailed yet (status !== 'Emailed')
-            const pendingTeams = registrationDatabase.filter(t => (t.status || '').trim() !== 'Emailed');
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwCw9tEoreUXJX7ox6iR22p2m4cn2JBem-95rztjkLX6jFvsi2GDP33DJD9apUSsCkG/exec';
+
+            // Step 1: Sync fresh data from Google Sheets (source of truth) before checking status
+            showNotification("Fetching latest status from Google Sheets...");
+            try {
+                const freshRes = await fetch(url + "?action=get");
+                const freshData = await freshRes.json();
+                if (freshData && Array.isArray(freshData)) {
+                    registrationDatabase = freshData;
+                    localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
+                    renderDatabaseRecords();
+                }
+            } catch (syncErr) {
+                console.warn("Could not sync before batch, using local data:", syncErr);
+            }
+
+            // Step 2: Filter teams based on Google Sheets status
+            const pendingTeams = registrationDatabase.filter(t => (t.status || '').trim().toLowerCase() !== 'emailed');
             
             if (pendingTeams.length === 0) {
                 showNotification("All registered teams have already been emailed! No pending certificates to send.", "info");
@@ -3168,7 +3170,6 @@
 
             let successCount = 0;
             let failCount = 0;
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwCw9tEoreUXJX7ox6iR22p2m4cn2JBem-95rztjkLX6jFvsi2GDP33DJD9apUSsCkG/exec';
 
             // Sequential Processing: Send 1 team at a time to ensure reliability
             const templateImg = await preloadTemplateImage();
