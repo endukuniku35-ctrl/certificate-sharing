@@ -1260,13 +1260,13 @@
                                 <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
                             </svg>
                         </button>
-                        <button class="btn btn-secondary" onclick="exportDatabaseCSV()" style="padding:0.4rem 0.75rem; font-size:0.8rem; display:inline-flex; align-items:center; gap:0.35rem;">
+                        <button class="btn btn-secondary" onclick="exportDatabaseCSV()" style="padding:0.4rem 0.75rem; font-size:0.8rem; display:inline-flex; align-items:center; gap:0.35rem;" title="Export database to Excel-compatible CSV">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                 <polyline points="7 10 12 15 17 10"></polyline>
                                 <line x1="12" y1="15" x2="12" y2="3"></line>
                             </svg>
-                            Export CSV
+                            Export to Excel
                         </button>
                         <button class="btn btn-success" onclick="batchEmailPendingTeams()" style="padding:0.45rem 0.9rem; font-size:0.85rem; font-weight:800; display:inline-flex; align-items:center; gap:0.4rem; box-shadow:0 0 15px rgba(16, 185, 129, 0.3);">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -3326,7 +3326,7 @@
             }
         }
 
-        // Export Registration Database to CSV File
+        // Export Registration Database to Excel-compatible CSV File
         function exportDatabaseCSV() {
             if (!registrationDatabase || registrationDatabase.length === 0) {
                 showNotification("No registration records to export.", "error");
@@ -3345,12 +3345,13 @@
                 csv += `${team},${college},${leader},${email},${phone},${members},${status}\n`;
             });
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            // Prepend UTF-8 BOM \ufeff so Excel reads it correctly with proper formatting and columns
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.download = "SYNORA26_Registrations_Export.csv";
+            link.download = "SYNORA26_Registrations_Excel.csv";
             link.click();
-            showNotification("Database exported to CSV successfully!");
+            showNotification("Database exported to Excel file successfully!", "success");
         }
 
         // Database renderer in Dashboard
@@ -3484,21 +3485,21 @@
             const pct = total > 0 ? Math.round((emailed / total) * 100) : 0;
 
             // Progress bar
-            const dispatchBar = document.getElementById('dispatchProgressBar');
-            const dispatchPct = document.getElementById('dispatchPct');
+            const dispatchBar = document.getElementById('dispatchRateBar');
+            const dispatchPct = document.getElementById('dispatchRatePct');
             if (dispatchBar) dispatchBar.style.width = pct + '%';
             if (dispatchPct) dispatchPct.textContent = pct + '%';
 
             // Legend counts
-            const eLegend = document.getElementById('emailedLegendCount');
-            const pLegend = document.getElementById('pendingLegendCount');
+            const eLegend = document.getElementById('chartEmailedCount');
+            const pLegend = document.getElementById('chartPendingCount');
             if (eLegend) eLegend.textContent = emailed;
             if (pLegend) pLegend.textContent = pending;
 
             // Institutions count
             const colleges = new Set();
             registrationDatabase.forEach(t => { if (t.college) colleges.add(t.college.trim().toLowerCase()); });
-            const instLegend = document.getElementById('institutionsLegendCount');
+            const instLegend = document.getElementById('chartCollegeCount');
             if (instLegend) instLegend.textContent = colleges.size;
 
             // Draw doughnut
