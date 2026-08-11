@@ -134,7 +134,7 @@ function doPost(e) {
         });
       }
       
-      // Locate the record in sheet and update Status column to "Emailed" with normalized matching
+      // Locate the EXACT record in sheet and update Status column H to "Emailed"
       const ss = SpreadsheetApp.getActiveSpreadsheet();
       const sheet = ss.getSheetByName("Registrations");
       if (sheet) {
@@ -142,15 +142,44 @@ function doPost(e) {
         const targetEmail = (email || "").toString().trim().toLowerCase();
         const targetTeam = (teamName || "").toString().trim().toLowerCase();
         
+        let matchedRow = -1;
+        
+        // Pass 1: Find exact match by BOTH team name AND email (most precise)
         for (let i = 1; i < values.length; i++) {
           const sheetEmail = (values[i][3] || "").toString().trim().toLowerCase();
           const sheetTeam = (values[i][0] || "").toString().trim().toLowerCase();
           
-          if ((targetEmail && sheetEmail === targetEmail) || (targetTeam && sheetTeam === targetTeam)) {
-            sheet.getRange(i + 1, 8).setValue("Emailed");
-            SpreadsheetApp.flush(); // Force immediate commit to disk
+          if (targetTeam && sheetTeam === targetTeam && targetEmail && sheetEmail === targetEmail) {
+            matchedRow = i;
             break;
           }
+        }
+        
+        // Pass 2: If no exact match, try team name only (handles cases where email differs)
+        if (matchedRow === -1) {
+          for (let i = 1; i < values.length; i++) {
+            const sheetTeam = (values[i][0] || "").toString().trim().toLowerCase();
+            if (targetTeam && sheetTeam === targetTeam) {
+              matchedRow = i;
+              break;
+            }
+          }
+        }
+        
+        // Pass 3: Last resort - match by email only (if team name was empty/different)
+        if (matchedRow === -1) {
+          for (let i = 1; i < values.length; i++) {
+            const sheetEmail = (values[i][3] || "").toString().trim().toLowerCase();
+            if (targetEmail && sheetEmail === targetEmail) {
+              matchedRow = i;
+              break;
+            }
+          }
+        }
+        
+        if (matchedRow !== -1) {
+          sheet.getRange(matchedRow + 1, 8).setValue("Emailed");
+          SpreadsheetApp.flush();
         }
       }
       
