@@ -3169,15 +3169,14 @@
 
             try {
                 const templateImg = await preloadTemplateImage();
-                const pdfPromises = team.members.map(async (memberName) => {
+                const pdfs = [];
+                for (const memberName of team.members) {
                     const pdfBlob = await renderCertPDFBlob(templateImg, memberName, team.teamName, team.college);
                     const cleanName = memberName.trim().replace(/\s+/g, '_');
                     const filename = `${cleanName}_synora'26.pdf`;
                     const base64Data = await convertBlobToBase64(pdfBlob);
-                    return { name: memberName, filename, blob: pdfBlob, base64: base64Data };
-                });
-
-                const pdfs = await Promise.all(pdfPromises);
+                    pdfs.push({ name: memberName, filename, blob: pdfBlob, base64: base64Data });
+                }
                 const attachments = pdfs.map(p => ({ name: p.filename, mimeType: 'application/pdf', base64Data: p.base64 }));
 
                 await postToAppsScript(url, {
@@ -3268,15 +3267,14 @@
                     if (progressBar) progressBar.style.width = `${pct}%`;
 
                     try {
-                        const pdfPromises = team.members.map(async (memberName) => {
+                        const pdfs = [];
+                        for (const memberName of team.members) {
                             const pdfBlob = await renderCertPDFBlob(templateImg, memberName, team.teamName, team.college);
                             const cleanName = memberName.trim().replace(/\s+/g, '_');
                             const filename = `${cleanName}_synora'26.pdf`;
                             const base64Data = await convertBlobToBase64(pdfBlob);
-                            return { name: memberName, filename, base64: base64Data };
-                        });
-
-                        const pdfs = await Promise.all(pdfPromises);
+                            pdfs.push({ name: memberName, filename, base64: base64Data });
+                        }
                         const attachments = pdfs.map(p => ({ name: p.filename, mimeType: 'application/pdf', base64Data: p.base64 }));
 
                         await postToAppsScript(url, {
