@@ -3381,10 +3381,21 @@
                 return matchTeam || matchLeader || matchMembers;
             });
 
+            const pagStartSpan = document.getElementById('pagStart');
+            const pagEndSpan = document.getElementById('pagEnd');
+            const pagTotalSpan = document.getElementById('pagTotal');
+            const pagPageNumSpan = document.getElementById('pagPageNum');
+            const pagPrevBtn = document.getElementById('pagPrevBtn');
+            const pagNextBtn = document.getElementById('pagNextBtn');
+
             if (filtered.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">No registration records found.</td></tr>';
-                const pInfo = document.getElementById('dbPaginationInfo');
-                if (pInfo) pInfo.textContent = 'Showing 0 to 0 of 0 records';
+                if (pagStartSpan) pagStartSpan.textContent = '0';
+                if (pagEndSpan) pagEndSpan.textContent = '0';
+                if (pagTotalSpan) pagTotalSpan.textContent = '0';
+                if (pagPageNumSpan) pagPageNumSpan.textContent = 'Page 1 of 1';
+                if (pagPrevBtn) pagPrevBtn.disabled = true;
+                if (pagNextBtn) pagNextBtn.disabled = true;
                 return;
             }
 
@@ -3398,11 +3409,15 @@
             const endIdx = Math.min(startIdx + pageSize, filtered.length);
             const pageRecords = filtered.slice(startIdx, endIdx);
 
-            // Update pagination info
-            const pInfo = document.getElementById('dbPaginationInfo');
-            if (pInfo) pInfo.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${filtered.length} records`;
-            const pPageNum = document.getElementById('dbPageNum');
-            if (pPageNum) pPageNum.textContent = `Page ${window.dbCurrentPage}`;
+            // Update pagination info in the UI elements properly
+            if (pagStartSpan) pagStartSpan.textContent = startIdx + 1;
+            if (pagEndSpan) pagEndSpan.textContent = endIdx;
+            if (pagTotalSpan) pagTotalSpan.textContent = filtered.length;
+            if (pagPageNumSpan) pagPageNumSpan.textContent = `Page ${window.dbCurrentPage} of ${totalPages}`;
+
+            // Handle button disabled states
+            if (pagPrevBtn) pagPrevBtn.disabled = (window.dbCurrentPage === 1);
+            if (pagNextBtn) pagNextBtn.disabled = (window.dbCurrentPage === totalPages);
 
             pageRecords.forEach(row => {
                 const statusVal = row.status || "Registered";
@@ -3442,8 +3457,21 @@
         // Pagination helpers
         function changeDbPage(direction) {
             if (!window.dbCurrentPage) window.dbCurrentPage = 1;
+            
+            const search = (document.getElementById('dbSearch')?.value || '').toLowerCase();
+            const filtered = registrationDatabase.filter(row => {
+                const matchTeam = (row.teamName || '').toLowerCase().includes(search);
+                const matchLeader = (row.leaderName || '').toLowerCase().includes(search);
+                const matchMembers = (row.members || []).some(m => m.toLowerCase().includes(search));
+                return matchTeam || matchLeader || matchMembers;
+            });
+            const pageSize = 10;
+            const totalPages = Math.ceil(filtered.length / pageSize) || 1;
+            
             window.dbCurrentPage += direction;
             if (window.dbCurrentPage < 1) window.dbCurrentPage = 1;
+            if (window.dbCurrentPage > totalPages) window.dbCurrentPage = totalPages;
+            
             renderDatabaseRecords();
         }
 
