@@ -50,12 +50,7 @@ function doGet(e) {
       });
     }
     
-    // Return both the database records and the remaining daily email quota
-    const quota = MailApp.getRemainingDailyEmails();
-    const payload = JSON.stringify({
-      database: data,
-      quota: quota
-    });
+    const payload = JSON.stringify(data);
     
     // Support JSONP wrapping to bypass CORS blocks on file:// origin (local runs)
     const callback = e.parameter.callback;
@@ -241,8 +236,7 @@ function doPost(e) {
       }
       
       return ContentService.createTextOutput(JSON.stringify({ 
-        status: "success", 
-        quota: MailApp.getRemainingDailyEmails() 
+        status: "success"
       })).setMimeType(ContentService.MimeType.JSON);
     }
   } catch (err) {
