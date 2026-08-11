@@ -1463,6 +1463,30 @@
             }
         }
 
+        // Robust cross-origin POST request helper for Google Apps Script Web App
+        async function postToAppsScript(url, payload) {
+            const response = await fetchWithRetry(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain' },
+                body: JSON.stringify(payload)
+            });
+            const text = await response.text();
+            try {
+                const parsed = JSON.parse(text);
+                if (parsed && parsed.status === 'error') {
+                    throw new Error(parsed.message || "Unknown Apps Script execution error");
+                }
+                return parsed;
+            } catch (e) {
+                // Handle HTML redirect blocks or login screens caused by deployment settings
+                if (text.includes("google-site-verification") || text.includes("login") || text.includes("<html") || text.includes("<HTML")) {
+                    throw new Error("Google Account authorization required. Please check that 'Who has access' is set to 'Anyone' in your Apps Script deployment.");
+                }
+                // Fallback for simple successful responses that aren't strict JSON
+                return { status: 'success', raw: text };
+            }
+        }
+
         // Global helper for Blob to Base64 conversion
         function convertBlobToBase64(blob) {
             return new Promise((resolve) => {
@@ -2184,17 +2208,15 @@
             // Sync with Google Sheets Apps Script URL if configured
             const sheetsUrl = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbx7-p-aspBuTGgm0h0dfKMyb3MLq2eIZcdIiQHWwG7kBGMX_xVKF0LVF2E5SI7PcwXP/exec';
             if (sheetsUrl) {
-                fetch(sheetsUrl, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        action: 'register',
-                        data: currentTeamData
-                    })
-                }).catch(err => console.error("Sheets POST sync failed:", err));
+                postToAppsScript(sheetsUrl, {
+                    action: 'register',
+                    data: currentTeamData
+                }).then(res => {
+                    addAuditLog(`Synced registration to Google Sheets for team: ${currentTeamData.teamName}`, 'success');
+                }).catch(err => {
+                    console.error("Sheets POST sync failed:", err);
+                    addAuditLog(`Sheets sync error: ${err.message}`, 'error');
+                });
             }
 
             // Prevent duplicate submissions by disabling button
@@ -2335,17 +2357,12 @@
                     });
                 }
 
-                await fetchWithRetry(url, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'sendEmail',
-                        email: currentTeamData.leaderEmail,
-                        leaderName: currentTeamData.leaderName,
-                        teamName: currentTeamData.teamName,
-                        attachments: attachments
-                    })
+                const res = await postToAppsScript(url, {
+                    action: 'sendEmail',
+                    email: currentTeamData.leaderEmail,
+                    leaderName: currentTeamData.leaderName,
+                    teamName: currentTeamData.teamName,
+                    attachments: attachments
                 });
 
                 showNotification("Certificates sent to " + currentTeamData.leaderEmail + " successfully!", "success");
@@ -2402,18 +2419,18 @@
             // 3. Sync status update to Google Sheets Apps Script Web App
             const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbx7-p-aspBuTGgm0h0dfKMyb3MLq2eIZcdIiQHWwG7kBGMX_xVKF0LVF2E5SI7PcwXP/exec';
             if (url) {
-                fetchWithRetry(url, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'sendEmail',
-                        email: currentTeamData.leaderEmail,
-                        leaderName: currentTeamData.leaderName,
-                        teamName: currentTeamData.teamName,
-                        attachments: []
-                    })
-                }).catch(err => console.error("Sheets status update error:", err));
+                postToAppsScript(url, {
+                    action: 'sendEmail',
+                    email: currentTeamData.leaderEmail,
+                    leaderName: currentTeamData.leaderName,
+                    teamName: currentTeamData.teamName,
+                    attachments: []
+                }).then(res => {
+                    addAuditLog(`Synced Emailed status to Sheets for team: ${currentTeamData.teamName}`, 'success');
+                }).catch(err => {
+                    console.error("Sheets status update error:", err);
+                    addAuditLog(`Sheets status sync error: ${err.message}`, 'error');
+                });
             }
         }
 
@@ -3017,19 +3034,12 @@
                     });
                 }
                 
-                await fetchWithRetry(url, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        action: 'sendEmail',
-                        email: to,
-                        leaderName: currentTeamData.leaderName,
-                        teamName: currentTeamData.teamName,
-                        attachments: attachments
-                    })
+                await postToAppsScript(url, {
+                    action: 'sendEmail',
+                    email: to,
+                    leaderName: currentTeamData.leaderName,
+                    teamName: currentTeamData.teamName,
+                    attachments: attachments
                 });
                 
                 // Instant status update across local storage, UI table, and Sheets
@@ -3037,7 +3047,7 @@
                 
                 sendBtn.innerHTML = "Sent Successfully!";
                 sendBtn.style.backgroundColor = "var(--success)";
-                showNotification("Certificates emailed successfully!");
+                showNotification("Certificates emailed successfully!", "success");
                 
                 setTimeout(() => {
                     navigateTo('successScreen');
@@ -3093,17 +3103,12 @@
                 const pdfs = await Promise.all(pdfPromises);
                 const attachments = pdfs.map(p => ({ name: p.filename, mimeType: 'application/pdf', base64Data: p.base64 }));
 
-                await fetchWithRetry(url, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'sendEmail',
-                        email: team.leaderEmail,
-                        leaderName: team.leaderName,
-                        teamName: team.teamName,
-                        attachments: attachments
-                    })
+                await postToAppsScript(url, {
+                    action: 'sendEmail',
+                    email: team.leaderEmail,
+                    leaderName: team.leaderName,
+                    teamName: team.teamName,
+                    attachments: attachments
                 });
 
                 // Update status in memory & localStorage
@@ -3197,17 +3202,12 @@
                         const pdfs = await Promise.all(pdfPromises);
                         const attachments = pdfs.map(p => ({ name: p.filename, mimeType: 'application/pdf', base64Data: p.base64 }));
 
-                        await fetchWithRetry(url, {
-                            method: 'POST',
-                            mode: 'no-cors',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                action: 'sendEmail',
-                                email: team.leaderEmail,
-                                leaderName: team.leaderName,
-                                teamName: team.teamName,
-                                attachments: attachments
-                            })
+                        await postToAppsScript(url, {
+                            action: 'sendEmail',
+                            email: team.leaderEmail,
+                            leaderName: team.leaderName,
+                            teamName: team.teamName,
+                            attachments: attachments
                         });
 
                         team.status = 'Emailed';
