@@ -1833,6 +1833,21 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data && Array.isArray(data)) {
+                        // Smart Merge: preserve local 'Emailed' statuses that haven't synced to Sheets yet
+                        const localStatusMap = {};
+                        registrationDatabase.forEach(t => {
+                            const key = (t.leaderEmail || '').trim().toLowerCase() + '|' + (t.teamName || '').trim().toLowerCase();
+                            if (t.status === 'Emailed') localStatusMap[key] = 'Emailed';
+                        });
+
+                        data.forEach(remoteTeam => {
+                            const key = (remoteTeam.leaderEmail || '').trim().toLowerCase() + '|' + (remoteTeam.teamName || '').trim().toLowerCase();
+                            // If local had 'Emailed' but remote doesn't, preserve the local status
+                            if (localStatusMap[key] === 'Emailed' && remoteTeam.status !== 'Emailed') {
+                                remoteTeam.status = 'Emailed';
+                            }
+                        });
+
                         registrationDatabase = data;
                         localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
                         renderDatabaseRecords();
@@ -3155,9 +3170,9 @@
             let failCount = 0;
             const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbwCw9tEoreUXJX7ox6iR22p2m4cn2JBem-95rztjkLX6jFvsi2GDP33DJD9apUSsCkG/exec';
 
-            // High-Capacity Engine for 150+ Teams: Adaptive Throttled Parallel Batches of 4
+            // Sequential Processing: Send 1 team at a time to ensure reliability
             const templateImg = await preloadTemplateImage();
-            const batchSize = 4;
+            const batchSize = 1;
             
             for (let i = 0; i < pendingTeams.length; i += batchSize) {
                 const chunk = pendingTeams.slice(i, i + batchSize);
@@ -3224,8 +3239,8 @@
                     }
                 }));
 
-                // 150ms Throttling Pause between chunks to prevent browser memory freezing
-                await new Promise(res => setTimeout(res, 150));
+                // 2 second pause between emails to ensure Apps Script processes each one reliably
+                await new Promise(res => setTimeout(res, 2000));
             }
 
             localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
