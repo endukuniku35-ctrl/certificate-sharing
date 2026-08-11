@@ -3333,25 +3333,37 @@
                 return;
             }
             
-            let csv = "Team Name,College,Leader Name,Leader Email,Leader Phone,Members,Status\n";
-            registrationDatabase.forEach(row => {
-                const team = `"${(row.teamName || '').replace(/"/g, '""')}"`;
-                const college = `"${(row.college || '').replace(/"/g, '""')}"`;
-                const leader = `"${(row.leaderName || '').replace(/"/g, '""')}"`;
-                const email = `"${(row.leaderEmail || '').replace(/"/g, '""')}"`;
-                const phone = `"${(row.leaderPhone || '').replace(/"/g, '""')}"`;
-                const members = `"${(Array.isArray(row.members) ? row.members.join('; ') : row.members || '').replace(/"/g, '""')}"`;
-                const status = `"${row.status || 'Registered'}"`;
-                csv += `${team},${college},${leader},${email},${phone},${members},${status}\n`;
-            });
+            try {
+                let csv = "Team Name,College,Leader Name,Leader Email,Leader Phone,Members,Status\n";
+                registrationDatabase.forEach(row => {
+                    const team = `"${(row.teamName || '').replace(/"/g, '""')}"`;
+                    const college = `"${(row.college || '').replace(/"/g, '""')}"`;
+                    const leader = `"${(row.leaderName || '').replace(/"/g, '""')}"`;
+                    const email = `"${(row.leaderEmail || '').replace(/"/g, '""')}"`;
+                    const phone = `"${(row.leaderPhone || '').replace(/"/g, '""')}"`;
+                    const members = `"${(Array.isArray(row.members) ? row.members.join('; ') : row.members || '').replace(/"/g, '""')}"`;
+                    const status = `"${row.status || 'Registered'}"`;
+                    csv += `${team},${college},${leader},${email},${phone},${members},${status}\n`;
+                });
 
-            // Prepend UTF-8 BOM \ufeff so Excel reads it correctly with proper formatting and columns
-            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "SYNORA26_Registrations_Excel.csv";
-            link.click();
-            showNotification("Database exported to Excel file successfully!", "success");
+                // Prepend UTF-8 BOM \ufeff so Excel reads it correctly with proper formatting and columns
+                const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement("a");
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", "SYNORA26_Registrations_Excel.csv");
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Allow a small delay before revoking URL to ensure file download starts cleanly
+                setTimeout(() => URL.revokeObjectURL(url), 100);
+                showNotification("Database exported to Excel file successfully!", "success");
+            } catch (err) {
+                console.error("Export to Excel failed:", err);
+                showNotification("Export to Excel failed: " + err.message, "error");
+            }
         }
 
         // Database renderer in Dashboard
