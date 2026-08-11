@@ -3366,9 +3366,27 @@
             });
 
             if (filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No registration records found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-muted);">No registration records found.</td></tr>';
+                const pInfo = document.getElementById('dbPaginationInfo');
+                if (pInfo) pInfo.textContent = 'Showing 0 to 0 of 0 records';
                 return;
             }
+
+            // Pagination: 10 records per page
+            const pageSize = 10;
+            if (typeof window.dbCurrentPage === 'undefined') window.dbCurrentPage = 1;
+            const totalPages = Math.ceil(filtered.length / pageSize);
+            if (window.dbCurrentPage > totalPages) window.dbCurrentPage = totalPages;
+            if (window.dbCurrentPage < 1) window.dbCurrentPage = 1;
+            const startIdx = (window.dbCurrentPage - 1) * pageSize;
+            const endIdx = Math.min(startIdx + pageSize, filtered.length);
+            const pageRecords = filtered.slice(startIdx, endIdx);
+
+            // Update pagination info
+            const pInfo = document.getElementById('dbPaginationInfo');
+            if (pInfo) pInfo.textContent = `Showing ${startIdx + 1} to ${endIdx} of ${filtered.length} records`;
+            const pPageNum = document.getElementById('dbPageNum');
+            if (pPageNum) pPageNum.textContent = `Page ${window.dbCurrentPage}`;
 
             pageRecords.forEach(row => {
                 const statusVal = row.status || "Registered";
@@ -3400,6 +3418,84 @@
                 `;
                 tbody.appendChild(tr);
             });
+
+            // Update progress bar and doughnut chart
+            updateDashboardAnalytics();
+        }
+
+        // Pagination helpers
+        function changeDbPage(direction) {
+            if (!window.dbCurrentPage) window.dbCurrentPage = 1;
+            window.dbCurrentPage += direction;
+            if (window.dbCurrentPage < 1) window.dbCurrentPage = 1;
+            renderDatabaseRecords();
+        }
+
+        // Update analytics widgets (progress bar + doughnut)
+        function updateDashboardAnalytics() {
+            const total = registrationDatabase.length;
+            let emailed = 0;
+            registrationDatabase.forEach(t => { if (t.status === 'Emailed') emailed++; });
+            const pending = total - emailed;
+            const pct = total > 0 ? Math.round((emailed / total) * 100) : 0;
+
+            // Progress bar
+            const dispatchBar = document.getElementById('dispatchProgressBar');
+            const dispatchPct = document.getElementById('dispatchPct');
+            if (dispatchBar) dispatchBar.style.width = pct + '%';
+            if (dispatchPct) dispatchPct.textContent = pct + '%';
+
+            // Legend counts
+            const eLegend = document.getElementById('emailedLegendCount');
+            const pLegend = document.getElementById('pendingLegendCount');
+            if (eLegend) eLegend.textContent = emailed;
+            if (pLegend) pLegend.textContent = pending;
+
+            // Institutions count
+            const colleges = new Set();
+            registrationDatabase.forEach(t => { if (t.college) colleges.add(t.college.trim().toLowerCase()); });
+            const instLegend = document.getElementById('institutionsLegendCount');
+            if (instLegend) instLegend.textContent = colleges.size;
+
+            // Draw doughnut
+            drawAnalyticsDoughnut(emailed, pending);
+        }
+
+        // Canvas doughnut chart
+        function drawAnalyticsDoughnut(emailed, pending) {
+            const canvas = document.getElementById('analyticsDoughnutCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const total = emailed + pending;
+            if (total === 0) return;
+
+            const cx = w / 2, cy = h / 2, r = Math.min(w, h) / 2 - 10, inner = r * 0.6;
+            const slices = [
+                { val: emailed, color: '#10b981' },
+                { val: pending, color: '#3b82f6' }
+            ];
+
+            let startAngle = -Math.PI / 2;
+            slices.forEach(s => {
+                const angle = (s.val / total) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.arc(cx, cy, r, startAngle, startAngle + angle);
+                ctx.arc(cx, cy, inner, startAngle + angle, startAngle, true);
+                ctx.closePath();
+                ctx.fillStyle = s.color;
+                ctx.fill();
+                startAngle += angle;
+            });
+
+            // Center text
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 22px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(Math.round((emailed / total) * 100) + '%', cx, cy);
         }
 
         // Regenerate action from Organizer Portal Database row
