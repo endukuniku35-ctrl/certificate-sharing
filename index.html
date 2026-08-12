@@ -2680,10 +2680,9 @@
             });
         }
 
-        // Canvas fallback processor
         function fallbackCanvasRender(imgElement, name, teamName, collegeName, resolve) {
             try {
-                const canvas = document.getElementById('certRenderCanvas');
+                const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
                 canvas.width = 1200;
                 canvas.height = 848;
@@ -3184,14 +3183,15 @@
 
             try {
                 const templateImg = await preloadTemplateImage();
-                const pdfs = [];
-                for (const memberName of team.members) {
+                const pdfPromises = team.members.map(async (memberName) => {
                     const pdfBlob = await renderCertPDFBlob(templateImg, memberName, team.teamName, team.college);
                     const cleanName = memberName.trim().replace(/\s+/g, '_');
                     const filename = `${cleanName}_synora'26.pdf`;
                     const base64Data = await convertBlobToBase64(pdfBlob);
-                    pdfs.push({ name: memberName, filename, blob: pdfBlob, base64: base64Data });
-                }
+                    return { name: memberName, filename, base64: base64Data };
+                });
+
+                const pdfs = await Promise.all(pdfPromises);
                 const attachments = pdfs.map(p => ({ name: p.filename, mimeType: 'application/pdf', base64Data: p.base64 }));
 
                 await postToAppsScript(url, {
@@ -3267,9 +3267,9 @@
             let successCount = 0;
             let failCount = 0;
 
-            // Sequential Processing: Send 1 team at a time to ensure reliability
+            // High-Speed Parallel Processing: Chunks of 6 teams at a time
             const templateImg = await preloadTemplateImage();
-            const batchSize = 1;
+            const batchSize = 6;
             
             for (let i = 0; i < pendingTeams.length; i += batchSize) {
                 const chunk = pendingTeams.slice(i, i + batchSize);
@@ -3282,14 +3282,14 @@
                     if (progressBar) progressBar.style.width = `${pct}%`;
 
                     try {
-                        const pdfs = [];
-                        for (const memberName of team.members) {
+                        const pdfPromises = team.members.map(async (memberName) => {
                             const pdfBlob = await renderCertPDFBlob(templateImg, memberName, team.teamName, team.college);
                             const cleanName = memberName.trim().replace(/\s+/g, '_');
                             const filename = `${cleanName}_synora'26.pdf`;
                             const base64Data = await convertBlobToBase64(pdfBlob);
-                            pdfs.push({ name: memberName, filename, base64: base64Data });
-                        }
+                            return { name: memberName, filename, base64: base64Data };
+                        });
+                        const pdfs = await Promise.all(pdfPromises);
                         const attachments = pdfs.map(p => ({ name: p.filename, mimeType: 'application/pdf', base64Data: p.base64 }));
 
                         await postToAppsScript(url, {
@@ -3330,8 +3330,8 @@
                     }
                 }));
 
-                // 2 second pause between emails to ensure Apps Script processes each one reliably
-                await new Promise(res => setTimeout(res, 2000));
+                // 0.5 second pause between chunks to ensure Apps Script processes each chunk reliably
+                await new Promise(res => setTimeout(res, 500));
             }
 
             localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));

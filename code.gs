@@ -143,147 +143,157 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Action to send email with certificate attachments automatically and update status
     if (action === 'sendEmail') {
-      const email = postData.email;
-      const leaderName = postData.leaderName;
-      const teamName = postData.teamName;
-      const attachmentsData = postData.attachments || [];
-      
-      console.log("📧 sendEmail: to=" + email + ", team=" + teamName + ", attachments=" + attachmentsData.length);
-      
-      const emailAttachments = [];
-      for (let i = 0; i < attachmentsData.length; i++) {
-        const fileData = attachmentsData[i];
-        let rawB64 = fileData.base64Data || "";
-        
-        // Remove data URI scheme prefix if present
-        if (rawB64.indexOf(",") !== -1) {
-          rawB64 = rawB64.split(",")[1];
-        }
-        
-        // Clean whitespace and linebreaks
-        rawB64 = rawB64.replace(/\s+/g, '');
-        
-        console.log("  📎 Attachment " + (i+1) + ": name=" + (fileData.name || "unknown") + ", base64Length=" + rawB64.length);
-        
-        if (rawB64.length > 0) {
-          const decoded = Utilities.base64Decode(rawB64);
-          const mime = fileData.mimeType || 'application/pdf';
-          const fileName = fileData.name || ('Certificate_' + (i + 1) + '.pdf');
-          const blob = Utilities.newBlob(decoded, mime, fileName);
-          emailAttachments.push(blob);
-          console.log("  ✅ Attachment " + (i+1) + " decoded: " + decoded.length + " bytes");
-        } else {
-          console.log("  ⚠️ Attachment " + (i+1) + " has EMPTY base64 data!");
-        }
-      }
-      
-      console.log("📧 Total valid attachments: " + emailAttachments.length);
-      
-      // Send email if attachments exist
-      let emailSent = false;
-      if (emailAttachments.length > 0) {
-        const subject = "SYNORA'26 Participation Certificates - Team " + teamName;
-        const body = "Dear " + leaderName + ",\n\n" +
-                     "Attached are the participation certificates for your team members of SYNORA'26 conducted by SIMATS Engineering.\n\n" +
-                     "Kindly distribute them to the respective team members.\n\n" +
-                     "Best regards,\n" +
-                     "Department of Nanobiomaterials,\n" +
-                     "SIMATS Engineering, SIMATS.";
-        
-        try {
-          MailApp.sendEmail({
-            to: email,
-            subject: subject,
-            body: body,
-            attachments: emailAttachments
-          });
-          emailSent = true;
-          console.log("✅ EMAIL SENT SUCCESSFULLY to: " + email + " with " + emailAttachments.length + " attachments");
-        } catch (mailErr) {
-          console.log("❌ EMAIL FAILED: " + mailErr.toString());
-          // Return error immediately so the client knows
-          return ContentService.createTextOutput(JSON.stringify({ 
-            status: "error", 
-            message: "Email failed: " + mailErr.toString()
-          })).setMimeType(ContentService.MimeType.JSON);
-        }
-      } else {
-        console.log("⚠️ No attachments to send - skipping email");
-      }
-      
-      // Only update sheet status if email was actually sent
-      if (emailSent) {
-        // Locate the EXACT record in sheet and update Status column H to "Emailed"
-        const ss = SpreadsheetApp.getActiveSpreadsheet();
-        let sheet = ss.getSheetByName("Registrations");
-        if (!sheet && ss.getSheets().length > 0) {
-          sheet = ss.getSheets()[0]; // Fallback to first sheet
-        }
-        
-        if (sheet) {
-          const values = sheet.getDataRange().getValues();
-          const targetEmail = (email || "").toString().trim().toLowerCase();
-          const targetTeam = (teamName || "").toString().trim().toLowerCase();
-          
-          const normalizeStr = function(str) {
-            return str.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-          };
-          
-          const normTargetTeam = normalizeStr(targetTeam);
-          let updatedCount = 0;
-          
-          // Update ALL rows that match by team name AND/OR email
-          for (let i = 1; i < values.length; i++) {
-            const sheetEmail = (values[i][3] || "").toString().trim().toLowerCase();
-            const sheetTeam = (values[i][0] || "").toString().trim().toLowerCase();
-            const normSheetTeam = normalizeStr(sheetTeam);
-            
-            let isMatch = false;
-            
-            // Match by both team name AND email (most precise)
-            if (targetTeam && sheetTeam === targetTeam && targetEmail && sheetEmail === targetEmail) {
-              isMatch = true;
-            }
-            // Match by normalized team name AND email
-            else if (normTargetTeam && normSheetTeam === normTargetTeam && targetEmail && sheetEmail === targetEmail) {
-              isMatch = true;
-            }
-            // Match by team name only (exact)
-            else if (targetTeam && sheetTeam === targetTeam) {
-              isMatch = true;
-            }
-            // Match by normalized team name only
-            else if (normTargetTeam && normSheetTeam === normTargetTeam) {
-              isMatch = true;
-            }
-            
-            if (isMatch) {
-              sheet.getRange(i + 1, 8).setValue("Emailed");
-              updatedCount++;
-            }
-          }
-          
-          if (updatedCount > 0) {
-            SpreadsheetApp.flush();
-            console.log("✅ Sheet status updated to 'Emailed' for " + updatedCount + " rows");
-          } else {
-            console.log("⚠️ Could not find matching row for team: " + teamName);
-          }
-        }
-      }
-      
-      let quota = -1;
+      const lock = LockService.getScriptLock();
       try {
-        quota = MailApp.getRemainingDailyQuota();
-      } catch (qErr) {}
-
-      return ContentService.createTextOutput(JSON.stringify({ 
-        status: emailSent ? "success" : "error",
-        message: emailSent ? "Email sent" : "No attachments received",
-        quota: quota
-      })).setMimeType(ContentService.MimeType.JSON);
+        lock.waitLock(15000); // Wait up to 15 seconds to acquire lock
+      } catch (lockErr) {
+        console.log("⚠️ Could not acquire lock: " + lockErr.toString());
+      }
+      
+      try {
+        const email = postData.email;
+        const leaderName = postData.leaderName;
+        const teamName = postData.teamName;
+        const attachmentsData = postData.attachments || [];
+        
+        console.log("📧 sendEmail: to=" + email + ", team=" + teamName + ", attachments=" + attachmentsData.length);
+        
+        const emailAttachments = [];
+        for (let i = 0; i < attachmentsData.length; i++) {
+          const fileData = attachmentsData[i];
+          let rawB64 = fileData.base64Data || "";
+          
+          // Remove data URI scheme prefix if present
+          if (rawB64.indexOf(",") !== -1) {
+            rawB64 = rawB64.split(",")[1];
+          }
+          
+          // Clean whitespace and linebreaks
+          rawB64 = rawB64.replace(/\s+/g, '');
+          
+          console.log("  📎 Attachment " + (i+1) + ": name=" + (fileData.name || "unknown") + ", base64Length=" + rawB64.length);
+          
+          if (rawB64.length > 0) {
+            const decoded = Utilities.base64Decode(rawB64);
+            const mime = fileData.mimeType || 'application/pdf';
+            const fileName = fileData.name || ('Certificate_' + (i + 1) + '.pdf');
+            const blob = Utilities.newBlob(decoded, mime, fileName);
+            emailAttachments.push(blob);
+            console.log("  ✅ Attachment " + (i+1) + " decoded: " + decoded.length + " bytes");
+          } else {
+            console.log("  ⚠️ Attachment " + (i+1) + " has EMPTY base64 data!");
+          }
+        }
+        
+        console.log("📧 Total valid attachments: " + emailAttachments.length);
+        
+        // Send email if attachments exist
+        let emailSent = false;
+        if (emailAttachments.length > 0) {
+          const subject = "SYNORA'26 Participation Certificates - Team " + teamName;
+          const body = "Dear " + leaderName + ",\n\n" +
+                       "Attached are the participation certificates for your team members of SYNORA'26 conducted by SIMATS Engineering.\n\n" +
+                       "Kindly distribute them to the respective team members.\n\n" +
+                       "Best regards,\n" +
+                       "Department of Nanobiomaterials,\n" +
+                       "SIMATS Engineering, SIMATS.";
+          
+          try {
+            MailApp.sendEmail({
+              to: email,
+              subject: subject,
+              body: body,
+              attachments: emailAttachments
+            });
+            emailSent = true;
+            console.log("✅ EMAIL SENT SUCCESSFULLY to: " + email + " with " + emailAttachments.length + " attachments");
+          } catch (mailErr) {
+            console.log("❌ EMAIL FAILED: " + mailErr.toString());
+            // Return error immediately so the client knows
+            return ContentService.createTextOutput(JSON.stringify({ 
+              status: "error", 
+              message: "Email failed: " + mailErr.toString()
+            })).setMimeType(ContentService.MimeType.JSON);
+          }
+        } else {
+          console.log("⚠️ No attachments to send - skipping email");
+        }
+        
+        // Only update sheet status if email was actually sent
+        if (emailSent) {
+          // Locate the EXACT record in sheet and update Status column H to "Emailed"
+          const ss = SpreadsheetApp.getActiveSpreadsheet();
+          let sheet = ss.getSheetByName("Registrations");
+          if (!sheet && ss.getSheets().length > 0) {
+            sheet = ss.getSheets()[0]; // Fallback to first sheet
+          }
+          
+          if (sheet) {
+            const values = sheet.getDataRange().getValues();
+            const targetEmail = (email || "").toString().trim().toLowerCase();
+            const targetTeam = (teamName || "").toString().trim().toLowerCase();
+            
+            const normalizeStr = function(str) {
+              return str.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+            };
+            
+            const normTargetTeam = normalizeStr(targetTeam);
+            let updatedCount = 0;
+            
+            // Update ALL rows that match by team name AND/OR email
+            for (let i = 1; i < values.length; i++) {
+              const sheetEmail = (values[i][3] || "").toString().trim().toLowerCase();
+              const sheetTeam = (values[i][0] || "").toString().trim().toLowerCase();
+              const normSheetTeam = normalizeStr(sheetTeam);
+              
+              let isMatch = false;
+              
+              // Match by both team name AND email (most precise)
+              if (targetTeam && sheetTeam === targetTeam && targetEmail && sheetEmail === targetEmail) {
+                isMatch = true;
+              }
+              // Match by normalized team name AND email
+              else if (normTargetTeam && normSheetTeam === normTargetTeam && targetEmail && sheetEmail === targetEmail) {
+                isMatch = true;
+              }
+              // Match by team name only (exact)
+              else if (targetTeam && sheetTeam === targetTeam) {
+                isMatch = true;
+              }
+              // Match by normalized team name only
+              else if (normTargetTeam && normSheetTeam === normTargetTeam) {
+                isMatch = true;
+              }
+              
+              if (isMatch) {
+                sheet.getRange(i + 1, 8).setValue("Emailed");
+                updatedCount++;
+              }
+            }
+            
+            if (updatedCount > 0) {
+              SpreadsheetApp.flush();
+              console.log("✅ Sheet status updated to 'Emailed' for " + updatedCount + " rows");
+            } else {
+              console.log("⚠️ Could not find matching row for team: " + teamName);
+            }
+          }
+        }
+        
+        let quota = -1;
+        try {
+          quota = MailApp.getRemainingDailyQuota();
+        } catch (qErr) {}
+  
+        return ContentService.createTextOutput(JSON.stringify({ 
+          status: emailSent ? "success" : "error",
+          message: emailSent ? "Email sent" : "No attachments received",
+          quota: quota
+        })).setMimeType(ContentService.MimeType.JSON);
+      } finally {
+        lock.releaseLock();
+      }
     }
   } catch (err) {
     console.log("❌ FATAL ERROR in doPost: " + err.toString());
