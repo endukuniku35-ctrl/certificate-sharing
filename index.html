@@ -1858,7 +1858,7 @@
             });
 
             // Auto-update saved URL if default URL in code is newer/different
-            const defaultUrl = 'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec';
+            const defaultUrl = 'https://script.google.com/macros/s/AKfycbxIgp4T1ajgWLq4nnWTOgmD9hylH8lL2GT8HHGpDcSYIclh-TafbgMd0DEZb_LfVCiV/exec';
             const savedUrl = localStorage.getItem('simats_sheets_url');
             if (savedUrl && savedUrl !== defaultUrl) {
                 const oldDefaults = [
@@ -1870,7 +1870,8 @@
                     'https://script.google.com/macros/s/AKfycbzt9B27IHNoB32Vws1Y1-VjV20huya8eOEYNTK0fALjvgFgPKSjAzqpNJfBMQt7MeE5/exec',
                     'https://script.google.com/macros/s/AKfycbyQrrr2UNWxQ82gm1ZNRfmKSjB9WiPbxznRHPfR5IAZ0X91ErZHcS8tqm-owal1IWhP/exec',
                     'https://script.google.com/macros/s/AKfycbzHE8dsO6461v7zSA38a3P6fiIWEObBIpW26KlYagdHt2woUNGUb4XCQGCknqGybzWp/exec',
-                    'https://script.google.com/macros/s/AKfycbxECYAi7aiGkIwR4Hh8hD_pokDkxtek7PQlWW7ViEUD71b_KtL0MYk1gEQaomzAmG7D/exec'
+                    'https://script.google.com/macros/s/AKfycbxECYAi7aiGkIwR4Hh8hD_pokDkxtek7PQlWW7ViEUD71b_KtL0MYk1gEQaomzAmG7D/exec',
+                    'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec'
                 ];
                 if (oldDefaults.includes(savedUrl)) {
                     localStorage.setItem('simats_sheets_url', defaultUrl);
@@ -1903,7 +1904,7 @@
         }
 
         function syncSheetsData() {
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxIgp4T1ajgWLq4nnWTOgmD9hylH8lL2GT8HHGpDcSYIclh-TafbgMd0DEZb_LfVCiV/exec';
             if (!url) return;
 
             showNotification("Syncing database with Google Sheets...");
@@ -2295,7 +2296,7 @@
             localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
 
             // Sync with Google Sheets Apps Script URL if configured
-            const sheetsUrl = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec';
+            const sheetsUrl = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxIgp4T1ajgWLq4nnWTOgmD9hylH8lL2GT8HHGpDcSYIclh-TafbgMd0DEZb_LfVCiV/exec';
             if (sheetsUrl) {
                 postToAppsScript(sheetsUrl, {
                     action: 'register',
@@ -2422,7 +2423,7 @@
                 return;
             }
 
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxIgp4T1ajgWLq4nnWTOgmD9hylH8lL2GT8HHGpDcSYIclh-TafbgMd0DEZb_LfVCiV/exec';
             const btn = document.getElementById('directEmailBtn');
             btn.disabled = true;
             btn.innerHTML = `
@@ -2506,7 +2507,7 @@
             addAuditLog(`Instantly updated status to Emailed for team: ${currentTeamData.teamName}`, 'success');
 
             // 3. Sync status update to Google Sheets Apps Script Web App
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxIgp4T1ajgWLq4nnWTOgmD9hylH8lL2GT8HHGpDcSYIclh-TafbgMd0DEZb_LfVCiV/exec';
             if (url) {
                 postToAppsScript(url, {
                     action: 'sendEmail',
@@ -3099,7 +3100,7 @@
                 return;
             }
             
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxIgp4T1ajgWLq4nnWTOgmD9hylH8lL2GT8HHGpDcSYIclh-TafbgMd0DEZb_LfVCiV/exec';
             if (!url) {
                 showNotification("Please configure your Google Sheets URL in the Organizer Dashboard first.", "error");
                 return;
@@ -3178,7 +3179,7 @@
                 }
             }
 
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxIgp4T1ajgWLq4nnWTOgmD9hylH8lL2GT8HHGpDcSYIclh-TafbgMd0DEZb_LfVCiV/exec';
             showNotification(`Generating & emailing certificates to ${team.leaderEmail}...`);
 
             try {
@@ -3223,7 +3224,7 @@
 
         // Batch Email Dispatcher — Uses Google Sheets status as source of truth
         async function batchEmailPendingTeams() {
-            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxqxtkUUsR-qLVVfo-lR8LuBtSXxaWNhpctMcfBcET60WBo_EgLOhQFc1wqP1bAd-jp/exec';
+            const url = localStorage.getItem('simats_sheets_url') || 'https://script.google.com/macros/s/AKfycbxIgp4T1ajgWLq4nnWTOgmD9hylH8lL2GT8HHGpDcSYIclh-TafbgMd0DEZb_LfVCiV/exec';
 
             // Step 1: Sync fresh data from Google Sheets (source of truth) before checking status
             showNotification("Fetching latest status from Google Sheets...");
