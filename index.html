@@ -2609,7 +2609,8 @@
                         const pdf = new jsPDF({
                             orientation: 'landscape',
                             unit: 'px',
-                            format: [width, height]
+                            format: [width, height],
+                            compress: true
                         });
 
                         pdf.addImage(imgElement, 'PNG', 0, 0, width, height);
@@ -2762,10 +2763,9 @@
                 ctx.font = `bold ${certTextConfig.detailsSize}px serif`;
                 ctx.fillText(collegeName.toUpperCase(), canvas.width / 2, detailsY);
 
-                // Export to PDF
                 let imgData;
                 try {
-                    imgData = canvas.toDataURL('image/jpeg', 0.95);
+                    imgData = canvas.toDataURL('image/jpeg', 0.70);
                 } catch (toDataUrlError) {
                     console.warn("Canvas exports blocked. Generating text-only Vector PDF.");
                     generateVectorOnlyPDF(name, teamName, collegeName, resolve);
@@ -2776,7 +2776,8 @@
                 const pdf = new jsPDF({
                     orientation: 'landscape',
                     unit: 'px',
-                    format: [canvas.width, canvas.height]
+                    format: [canvas.width, canvas.height],
+                    compress: true
                 });
                 pdf.addImage(imgData, 'JPEG', 0, 0, canvas.width, canvas.height);
                 resolve(pdf.output('blob'));
@@ -2794,7 +2795,8 @@
             const pdf = new jsPDF({
                 orientation: 'landscape',
                 unit: 'px',
-                format: [width, height]
+                format: [width, height],
+                compress: true
             });
 
             // Frame border
@@ -3267,9 +3269,9 @@
             let successCount = 0;
             let failCount = 0;
 
-            // High-Speed Parallel Processing: Chunks of 6 teams at a time
+            // High-Speed Parallel Processing: Chunks of 8 teams at a time
             const templateImg = await preloadTemplateImage();
-            const batchSize = 6;
+            const batchSize = 8;
             
             for (let i = 0; i < pendingTeams.length; i += batchSize) {
                 const chunk = pendingTeams.slice(i, i + batchSize);
@@ -3330,8 +3332,8 @@
                     }
                 }));
 
-                // 0.5 second pause between chunks to ensure Apps Script processes each chunk reliably
-                await new Promise(res => setTimeout(res, 500));
+                // 0.3 second pause between chunks to ensure Apps Script processes each chunk reliably
+                await new Promise(res => setTimeout(res, 300));
             }
 
             localStorage.setItem('simats_db', JSON.stringify(registrationDatabase));
